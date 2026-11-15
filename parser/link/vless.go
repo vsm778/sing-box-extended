@@ -173,6 +173,8 @@ func parseVLESSLink(link string) (option.Outbound, error) {
 			}
 		case "pbk":
 			TLSOptions.Reality.PublicKey = value
+		case "support-x25519mlkem768", "support_x25519mlkem768":
+			TLSOptions.Reality.SupportX25519MLKEM768 = strings.EqualFold(value, "true") || value == "1"
 		case "sid":
 			TLSOptions.Reality.ShortID = value
 		case "tfo", "tcp-fast-open", "tcp_fast_open":
