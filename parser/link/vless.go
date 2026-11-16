@@ -1,7 +1,6 @@
 package link
 
 import (
-	"encoding/json"
 	"net/url"
 	"strings"
 
@@ -83,66 +82,16 @@ func parseVLESSLink(link string) (option.Outbound, error) {
 				if mode, exists := proxy["mode"]; exists && mode != "" {
 					Transport.XHTTPOptions.Mode = mode
 				}
+				if padding, exists := proxy["x_padding_bytes"]; exists && padding != "" {
+					rangeValue, err := common.ParseXHTTPRange(padding)
+					if err != nil {
+						return option.Outbound{}, E.Cause(err, "parse XHTTP padding")
+					}
+					Transport.XHTTPOptions.XPaddingBytes = rangeValue
+				}
 				if extra, exists := proxy["extra"]; exists && extra != "" {
-					decodedExtra, err := common.DecodeBase64URLSafe(extra)
-					if err == nil {
-						var extraOptions map[string]interface{}
-						if json.Unmarshal([]byte(decodedExtra), &extraOptions) == nil {
-							if xmux, ok := extraOptions["xmux"].(map[string]interface{}); ok {
-								Transport.XHTTPOptions.Xmux = &option.V2RayXHTTPXmuxOptions{}
-								if val, ok := xmux["cMaxReuseTimes"].(string); ok {
-									if r, err := common.ParseXHTTPRange(val); err == nil {
-										Transport.XHTTPOptions.Xmux.CMaxReuseTimes = r
-									}
-								}
-								if val, ok := xmux["maxConcurrency"].(string); ok {
-									if r, err := common.ParseXHTTPRange(val); err == nil {
-										Transport.XHTTPOptions.Xmux.MaxConcurrency = r
-									}
-								}
-								if val, ok := xmux["maxConnections"].(string); ok {
-									if r, err := common.ParseXHTTPRange(val); err == nil {
-										Transport.XHTTPOptions.Xmux.MaxConnections = r
-									}
-								}
-								if val, ok := xmux["hKeepAlivePeriod"].(string); ok {
-									Transport.XHTTPOptions.Xmux.HKeepAlivePeriod = common.StringToType[int64](val)
-								}
-								if val, ok := xmux["hMaxRequestTimes"].(string); ok {
-									if r, err := common.ParseXHTTPRange(val); err == nil {
-										Transport.XHTTPOptions.Xmux.HMaxRequestTimes = r
-									}
-								}
-								if val, ok := xmux["hMaxReusableSecs"].(string); ok {
-									if r, err := common.ParseXHTTPRange(val); err == nil {
-										Transport.XHTTPOptions.Xmux.HMaxReusableSecs = r
-									}
-								}
-							}
-							if val, ok := extraOptions["noGRPCHeader"].(bool); ok {
-								Transport.XHTTPOptions.NoGRPCHeader = val
-							}
-							if val, ok := extraOptions["xPaddingBytes"].(string); ok {
-								if r, err := common.ParseXHTTPRange(val); err == nil {
-									Transport.XHTTPOptions.XPaddingBytes = r
-								}
-							}
-							if val, ok := extraOptions["scMaxEachPostBytes"].(string); ok {
-								if r, err := common.ParseXHTTPRange(val); err == nil {
-									Transport.XHTTPOptions.ScMaxEachPostBytes = &r
-								}
-							}
-							if val, ok := extraOptions["scMinPostsIntervalMs"].(string); ok {
-								if r, err := common.ParseXHTTPRange(val); err == nil {
-									Transport.XHTTPOptions.ScMinPostsIntervalMs = &r
-								}
-							}
-							if val, ok := extraOptions["scStreamUpServerSecs"].(string); ok {
-								if r, err := common.ParseXHTTPRange(val); err == nil {
-									Transport.XHTTPOptions.ScStreamUpServerSecs = &r
-								}
-							}
-						}
+					if err := applyVLESSXHTTPExtra(extra, &Transport.XHTTPOptions); err != nil {
+						return option.Outbound{}, E.Cause(err, "parse XHTTP extra")
 					}
 				}
 			default:
